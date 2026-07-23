@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Watch — demo (no extension)</title>
+  <!-- The REAL platform overlay stylesheet, copied verbatim at build time. -->
+  <link rel="stylesheet" href="./overlay.css" />
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #0b1220;
+      color: #e6ebf5;
+    }
+    .topbar {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 20px; border-bottom: 1px solid #1c2740;
+      background: #0e1730;
+    }
+    .wordmark { font-weight: 800; font-size: 20px; letter-spacing: -0.02em; color: #7fb0ff; }
+    .badge {
+      margin-left: auto; font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; color: #0b1220; background: #e0a83e;
+      padding: 4px 9px; border-radius: 999px;
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 22px 20px 60px; }
+    #video-title { font-size: 22px; font-weight: 700; margin: 4px 0 2px; line-height: 1.25; }
+    #channel-name { color: #93a2c2; font-size: 14px; margin-bottom: 16px; }
+    /* The player stage: a positioned 16/9 box. #ce-root (from overlay.css) fills
+       it as an absolute overlay; the YouTube iframe sits behind it. */
+    #player-stage {
+      position: relative; aspect-ratio: 16 / 9; width: 100%;
+      background: #000; border-radius: 14px; overflow: hidden;
+      box-shadow: 0 20px 50px -24px rgba(0,0,0,0.8);
+    }
+    #player-stage #player,
+    #player-stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px;
+    }
+    .controls button {
+      padding: 7px 12px; border-radius: 8px; border: 1px solid #2a3a5e;
+      background: #16223d; color: #e6ebf5; cursor: pointer; font-size: 13px;
+    }
+    .controls button:hover { background: #1d2c4d; }
+    #clock { font-variant-numeric: tabular-nums; color: #93a2c2; margin-left: auto; font-size: 13px; }
+    .hint { margin-top: 12px; color: #6f80a3; font-size: 12.5px; line-height: 1.5; }
+    .hint code { background: #16223d; padding: 1px 5px; border-radius: 4px; color: #b9c6e2; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="wordmark" id="channel-name">Yaqeen Institute</span>
+    <span class="badge">Demo · no extension</span>
+  </div>
+  <main>
+    <h1 id="video-title">Loading…</h1>
+    <div id="channel-line" hidden></div>
+
+    <div id="player-stage">
+      <div id="player"></div>
+      <!-- Overlay host: positioned by overlay.css; cards render here. -->
+      <div id="ce-root"></div>
+    </div>
+
+    <div class="controls">
+      <button id="btn-play" type="button">▶ Play</button>
+      <button id="btn-pause" type="button">⏸ Pause</button>
+      <button type="button" data-seek="192">↷ 3:14 · prompt 1</button>
+      <button type="button" data-seek="361">↷ 6:04 · scale</button>
+      <button type="button" data-seek="670">↷ 11:13 · prompt 2</button>
+      <button type="button" data-seek="1022">↷ 17:04 · prompt 3</button>
+      <span id="clock">0:00 / —</span>
+    </div>
+
+    <p class="hint">
+      This page embeds the YouTube video and shows the same interactive prompt cards the
+      browser extension would — driven entirely by <code>pack.json</code> and the platform's
+      own kernel + renderers, with <strong>no extension installed</strong>. Prompts appear at
+      their anchored timestamps; the <em>branch</em> prompt seeks the player when you choose a path.
+    </p>
+  </main>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

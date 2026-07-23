@@ -1,0 +1,1159 @@
+/* Overlay base styles — platform CSS. Client theming arrives exclusively as
+   the CSS variables in the build-generated :root block (rule 2: config is
+   data; clients never ship CSS).
+
+   Radius note: the overlay uses literal radii (it renders over a video, not on a
+   tokened page surface). The pages dashboard uses --d-r1/--d-r2/--d-r3
+   (10/16/22px); the creator console uses --r-sm/--r-md/--r-lg (6/9/13px). Keep
+   new overlay radii aligned with those scales by eye. */
+
+/* Bundled fonts for the "horror" card_style (self-hosted — no third-party
+   runtime fetch, per CLAUDE.md). Declaring these costs nothing for clients
+   that never use data-style="horror"; the browser only downloads a face when
+   something actually renders text with a matching font-family. */
+@font-face {
+  font-family: "Nosifer";
+  src: url("assets/fonts/nosifer-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Special Elite";
+  src: url("assets/fonts/special-elite-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Bebas Neue";
+  src: url("assets/fonts/bebas-neue-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("assets/fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("assets/fonts/jetbrains-mono-latin-600-normal.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Bounded on BOTH edges (top AND bottom), not just the anchor edge — a deep-dive
+   thread's height is unpredictable (1-N stages), and an unbounded box that only
+   pins its bottom grows upward past the viewport as stages accumulate, clipped
+   invisibly above the page instead of scrolling in view (2026-07-20 bug: dimmed
+   history cards rendered off-screen/overlapping page chrome). Fixing both edges
+   gives the box a real height so .ce-thread's overflow-y:auto can do its job. */
+#ce-root {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  bottom: 64px;
+  z-index: 10000;
+  font-family: ui-sans-serif, system-ui, "Segoe UI", "Inter", "Roboto", sans-serif;
+  pointer-events: none;
+}
+/* Rounded display stack for eyebrows/labels — adds character on platforms that
+   ship a rounded UI face, degrades cleanly to the body stack elsewhere. */
+#ce-root .ce-card { --ce-display: ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif; }
+
+/* Choose-your-own-path breadcrumb ("Path: X") — a standing memory aid for
+   which fork the viewer took, distinct from #ce-root's dismissible card
+   thread (content.ts's ensureBreadcrumb()/showBreadcrumb()). Docked top-left:
+   the only corner clear of both the default card position (bottom-right) and
+   the promo lower-third banner (full-bottom). */
+#ce-breadcrumb {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  z-index: 9999;
+  max-width: 60%;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-family: ui-sans-serif, system-ui, "Segoe UI", "Inter", "Roboto", sans-serif;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  animation: ce-card-in 0.28s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  #ce-breadcrumb { animation: none; }
+}
+
+/* Timeline hints — markers on the YouTube progress bar at item timestamps.
+   The layer itself never intercepts events; each dot IS clickable (click to
+   reopen that prompt) and sits just above the scrub line so it doesn't block
+   scrubbing. The dot's centre is at (start / duration) — exactly the trigger
+   point. */
+.ce-hint-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 30;
+}
+.ce-hint {
+  position: absolute;
+  bottom: 7px; /* raised above the thin progress bar so it stays clickable */
+  width: 11px;
+  height: 11px;
+  margin-left: -5.5px;
+  border-radius: 50%;
+  background: var(--ce-accent, #ffd54a);
+  border: 1px solid rgba(0, 0, 0, 0.65);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
+  pointer-events: auto;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+.ce-hint:hover {
+  transform: scale(1.45);
+}
+
+/* Thread: stacked stages of a deep-dive/clarification chain. Earlier (answered)
+   cards stay visible above the newest; the column scrolls if it grows tall. */
+#ce-root .ce-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+  height: 100%;
+  max-height: 70vh;
+  overflow-y: auto;
+  pointer-events: auto;
+}
+/* A short thread (1-2 stages) should still hug the bottom anchor, not float at
+   the box's top — but `justify-content: flex-end` breaks scrolling once the
+   thread overflows (browsers don't register flex-end-justified overflow past
+   the flex-start edge as scrollable, so older stages clip invisibly with no
+   way to reach them). margin-top:auto on the first card gets the same "hug the
+   bottom when short" result WITHOUT that trap: the auto margin absorbs slack
+   space while there's room, and collapses to 0 once content overflows, handing
+   off to ordinary (scrollable) top-anchored flow. */
+#ce-root .ce-thread .ce-card:first-child { margin-top: auto; }
+/* top-anchored zone wants the opposite: first stage flush against the top
+   anchor, not pushed down to hug the (unset) bottom. */
+#ce-root[data-position^="top"] .ce-thread .ce-card:first-child { margin-top: 0; }
+/* Answered (locked) cards recede so the active one stands out. */
+#ce-root .ce-thread .ce-card:not(:last-child) { opacity: 0.62; }
+
+/* Countdown bar — information-only cards (notice/up_next) silently fade after a
+   grace period; this thin bar pinned to the card's bottom edge shrinks 100%→0
+   over that window so the fade is visible, not abrupt. The host sets the
+   transition duration inline (see content.ts nudge-arm block). */
+#ce-root .ce-countdown-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  border-bottom-left-radius: 14px;
+  border-bottom-right-radius: 14px;
+  background: var(--ce-accent, var(--ce-primary, #2962ff));
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+#ce-root .ce-card {
+  pointer-events: auto;
+  position: relative;
+  width: 300px;
+  max-width: 82vw;
+  box-sizing: border-box;
+  /* One unified brand accent (the creator-picked --ce-primary) drives every card
+     and the dashboard alike — card TYPES are told apart by their eyebrow glyph,
+     not by color. Correctness colors stay fixed (ok/danger). */
+  --ce-type: var(--ce-primary, #2962ff);
+  --ce-ok: #1e8e3e;
+  --ce-danger: #d93025;
+  background: var(--ce-background, #ffffff);
+  color: var(--ce-text, #111111);
+  border-radius: 14px;
+  /* Theme-aware hairline + a brighter top edge tinted by the type accent. */
+  border: 1px solid color-mix(in srgb, var(--ce-text, #111111) 12%, transparent);
+  border-top: 2px solid color-mix(in srgb, var(--ce-type) 70%, transparent);
+  box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.5), 0 3px 10px -4px rgba(0, 0, 0, 0.28);
+  padding: 13px 15px 14px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  animation: ce-card-in 0.28s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+/* Per-primitive identity is carried by the eyebrow glyph alone (below) — all card
+   types share the single brand accent so the overlay reads as one coherent
+   palette, matching the dashboard. */
+
+/* ── Interaction archetypes (resolved card_style; unknown → default) ──────────
+   default = Panel (base, above) · compact = Quick card · minimal = Nudge
+   (auto-dismiss, in content.ts) · bold = louder/larger panel. card_style governs
+   SIZE/DENSITY only — the dim+blur spotlight is reserved for promo cards (the
+   action primitive) and never triggered by a style. */
+
+/* compact (Quick card): tighter, smaller — for fast polls / dense videos. */
+#ce-root .ce-card[data-style="compact"] {
+  width: 264px;
+  padding: 11px 13px;
+  border-radius: 12px;
+}
+#ce-root .ce-card[data-style="compact"] .ce-body { margin-bottom: 9px; font-size: 13.5px; }
+#ce-root .ce-card[data-style="compact"] .ce-header { margin-bottom: 7px; }
+
+/* minimal (Nudge): a quiet, ambient pill — no title chrome, light elevation. It
+   auto-dismisses if untouched (content.ts), so keep it visually unobtrusive. */
+#ce-root .ce-card[data-style="minimal"] {
+  width: 272px;
+  padding: 12px 15px;
+  border-radius: 13px;
+  box-shadow: 0 8px 22px -8px rgba(0, 0, 0, 0.35);
+}
+#ce-root .ce-card[data-style="minimal"] .ce-title { display: none; }
+#ce-root .ce-card[data-style="minimal"] .ce-body { margin-bottom: 9px; }
+/* With the title hidden, keep the remaining controls (snooze/dismiss) together
+   at the right edge instead of split apart by space-between. */
+#ce-root .ce-card[data-style="minimal"] .ce-header {
+  justify-content: flex-end;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+/* bold: a louder, larger panel for a key moment — stays in its corner/zone (no
+   player dim; that's promo-only). */
+#ce-root .ce-card[data-style="bold"] {
+  width: 340px;
+  padding: 17px 19px;
+  border-radius: 16px;
+  box-shadow: 0 22px 52px -16px rgba(0, 0, 0, 0.58), 0 6px 18px -8px rgba(0, 0, 0, 0.38);
+}
+#ce-root .ce-card[data-style="bold"] .ce-body { font-size: 15px; line-height: 1.5; }
+
+/* horror: boxless glow-fade treatment (Claude Design "Horror YouTube popup
+   design", 2026-07-14). Unlike the other variants (size/density only), this
+   one replaces the panel chrome entirely — no background/border/shadow, text
+   glows straight out of the video. A contained (not full-viewport) grain
+   texture keeps a horror-film feel without obscuring the video underneath. */
+#ce-root .ce-card[data-style="horror"] {
+  position: relative;
+  background: transparent;
+  border: none;
+  border-top: none;
+  box-shadow: none;
+  padding: 10px 6px;
+  overflow: hidden;
+  animation: ce-horror-fade-in 1.1s ease-out both;
+}
+/* Contained grain — a subtle animated dot-noise texture clipped to the card. */
+#ce-root .ce-card[data-style="horror"]::before {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 3px 3px;
+  animation: ce-horror-grain 0.4s steps(2) infinite;
+  opacity: 0.35;
+  mix-blend-mode: overlay;
+  z-index: 0;
+}
+#ce-root .ce-card[data-style="horror"] .ce-header,
+#ce-root .ce-card[data-style="horror"] .ce-body,
+#ce-root .ce-card[data-style="horror"] .ce-content,
+#ce-root .ce-card[data-style="horror"] .ce-feedback {
+  position: relative;
+  z-index: 1;
+}
+
+/* Header dot + drip — replaces the default glyph-chip badge with a small
+   pulsing red "witness mark" and a thin drip tail beneath it. */
+#ce-root .ce-card[data-style="horror"] .ce-title {
+  position: relative;
+  padding-left: 18px;
+  font-family: "Nosifer", cursive;
+  font-weight: 400;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: #e21f1f;
+  text-transform: none;
+  animation: ce-horror-glow-pulse 3.6s ease-in-out infinite;
+}
+#ce-root .ce-card[data-style="horror"] .ce-title::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ff3b3b, #7a0e0e 70%);
+  animation: ce-horror-pulse-dot 2.2s ease-in-out infinite;
+}
+#ce-root .ce-card[data-style="horror"] .ce-title::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: calc(50% + 4px);
+  width: 2px;
+  background: linear-gradient(#9a1414, transparent);
+  border-radius: 0 0 2px 2px;
+  animation: ce-horror-drip 2.2s ease-in-out infinite;
+}
+
+#ce-root .ce-card[data-style="horror"] .ce-body {
+  font-family: "Special Elite", monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #f0e9e2;
+  text-shadow: 0 0 14px rgba(0, 0, 0, 0.8);
+}
+#ce-root .ce-card[data-style="horror"] .ce-caption,
+#ce-root .ce-card[data-style="horror"] .ce-upnext-heading {
+  font-family: "Nosifer", cursive;
+  font-weight: 400;
+  color: #c9a730;
+  text-shadow: 0 0 10px rgba(200, 160, 50, 0.4);
+}
+#ce-root .ce-card[data-style="horror"] .ce-dismiss,
+#ce-root .ce-card[data-style="horror"] .ce-snooze-toggle {
+  color: #4a423c;
+}
+#ce-root .ce-card[data-style="horror"] .ce-dismiss:hover,
+#ce-root .ce-card[data-style="horror"] .ce-snooze-toggle:hover {
+  color: #8a7168;
+}
+
+/* Options/scale — boxless: the glow itself IS the selected state, no fill. */
+#ce-root .ce-card[data-style="horror"] .ce-btn {
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(120, 40, 40, 0.18);
+  border-radius: 0;
+  color: #a89e96;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 400;
+  padding: 11px 2px;
+  box-shadow: none;
+  transition: color 0.25s, text-shadow 0.25s;
+}
+#ce-root .ce-card[data-style="horror"] .ce-btn:hover {
+  background: none;
+  border-color: rgba(120, 40, 40, 0.18);
+  color: #ff8f8f;
+  text-shadow: 0 0 10px rgba(255, 60, 60, 0.5);
+}
+#ce-root .ce-card[data-style="horror"] .ce-btn.ce-chosen:not(.ce-right):not(.ce-wrong) {
+  background: none;
+  color: #ff6a6a;
+  font-weight: 600;
+  text-shadow: 0 0 14px rgba(255, 40, 40, 0.7), 0 0 30px rgba(200, 0, 0, 0.4);
+  box-shadow: none;
+}
+#ce-root .ce-card[data-style="horror"] .ce-btn-scale {
+  font-family: "Bebas Neue", sans-serif;
+  font-size: 20px;
+  border-bottom-width: 2px;
+}
+#ce-root .ce-card[data-style="horror"] .ce-btn.ce-right,
+#ce-root .ce-card[data-style="horror"] .ce-btn.ce-wrong {
+  background: none;
+  border-radius: 0;
+}
+
+@keyframes ce-horror-fade-in {
+  from { opacity: 0; filter: blur(6px); transform: translateY(6px); }
+  to   { opacity: 1; filter: blur(0px); transform: translateY(0); }
+}
+@keyframes ce-horror-grain {
+  0%   { transform: translate(0, 0); }
+  10%  { transform: translate(-2%, -4%); }
+  30%  { transform: translate(3%, 2%); }
+  50%  { transform: translate(-3%, 3%); }
+  70%  { transform: translate(2%, -3%); }
+  100% { transform: translate(0, 0); }
+}
+@keyframes ce-horror-glow-pulse {
+  0%, 100% { text-shadow: 0 0 8px rgba(220, 20, 20, 0.5), 0 0 22px rgba(150, 0, 0, 0.25); }
+  50%      { text-shadow: 0 0 16px rgba(255, 40, 40, 0.85), 0 0 40px rgba(180, 0, 0, 0.4); }
+}
+@keyframes ce-horror-pulse-dot {
+  0%, 100% { box-shadow: 0 0 6px 2px rgba(180, 0, 0, 0.7), 0 0 0 0 rgba(180, 0, 0, 0.5); }
+  50%      { box-shadow: 0 0 16px 6px rgba(220, 10, 10, 1), 0 0 0 8px rgba(180, 0, 0, 0.2); }
+}
+@keyframes ce-horror-drip {
+  0%   { height: 0px; opacity: 0; }
+  35%  { opacity: 0.9; }
+  100% { height: 12px; opacity: 0.9; }
+}
+/* Exit — a fade+blur matching the glow aesthetic, overriding the default
+   translateY/scale ce-card-out for this style only. */
+#ce-root.ce-dismissing .ce-card[data-style="horror"] {
+  animation: ce-horror-fade-out 0.2s ease forwards;
+}
+@keyframes ce-horror-fade-out {
+  from { opacity: 1; filter: blur(0px); }
+  to   { opacity: 0; filter: blur(6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #ce-root .ce-card[data-style="horror"] { animation: none; }
+  #ce-root .ce-card[data-style="horror"]::before { animation: none; }
+  #ce-root .ce-card[data-style="horror"] .ce-title { animation: none; }
+  #ce-root .ce-card[data-style="horror"] .ce-title::before { animation: none; }
+  #ce-root .ce-card[data-style="horror"] .ce-title::after { animation: none; }
+  #ce-root.ce-dismissing .ce-card[data-style="horror"] { animation: none; }
+}
+
+/* title_card: cinematic full-bleed chapter-reveal — boxless like horror, but
+   theme-neutral (uses the client's own --ce-type/--ce-primary accent, no
+   fixed palette) rather than a horror-specific look. Meant for a choose-your-
+   own-path arrival/landing beat ("You chose X — this covers Y"), styled like
+   a film chapter title rather than a chip/panel, though assignable to any
+   item like every other card_style. */
+#ce-root .ce-card[data-style="title_card"] {
+  position: relative;
+  width: 340px;
+  max-width: 82vw;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.55));
+  border: none;
+  border-top: none;
+  box-shadow: none;
+  border-radius: 10px;
+  padding: 28px 22px;
+  text-align: center;
+  overflow: hidden;
+  animation: ce-title-card-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+#ce-root .ce-card[data-style="title_card"] .ce-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--ce-type, var(--ce-primary, #2962ff));
+  justify-content: center;
+}
+#ce-root .ce-card[data-style="title_card"] .ce-body {
+  font-size: 19px;
+  line-height: 1.45;
+  font-weight: 600;
+  color: #ffffff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+#ce-root .ce-card[data-style="title_card"] .ce-body::after {
+  content: "";
+  display: block;
+  width: 48px;
+  height: 2px;
+  margin: 16px auto 0;
+  background: var(--ce-type, var(--ce-primary, #2962ff));
+  opacity: 0.8;
+}
+#ce-root .ce-card[data-style="title_card"] .ce-caption,
+#ce-root .ce-card[data-style="title_card"] .ce-upnext-heading {
+  color: rgba(255, 255, 255, 0.75);
+}
+#ce-root .ce-card[data-style="title_card"] .ce-dismiss,
+#ce-root .ce-card[data-style="title_card"] .ce-snooze-toggle {
+  color: rgba(255, 255, 255, 0.5);
+}
+#ce-root .ce-card[data-style="title_card"] .ce-dismiss:hover,
+#ce-root .ce-card[data-style="title_card"] .ce-snooze-toggle:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+@keyframes ce-title-card-in {
+  from { opacity: 0; transform: scale(0.94); filter: blur(3px); }
+  to   { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+#ce-root.ce-dismissing .ce-card[data-style="title_card"] {
+  animation: ce-title-card-out 0.2s ease forwards;
+}
+@keyframes ce-title-card-out {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.96); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #ce-root .ce-card[data-style="title_card"] { animation: none; }
+  #ce-root.ce-dismissing .ce-card[data-style="title_card"] { animation: none; }
+}
+
+/* Blur dimension borrowed from the horror card_style's fade (2026-07-14
+   audit): a soft focus-pull reads as noticeably more polished than a plain
+   translate+scale, and costs nothing extra to animate. Kept at default's
+   original 0.28s/14px pacing — horror's slower 1.1s/6px timing is tuned to
+   its own atmosphere, not adopted here. */
+@keyframes ce-card-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); filter: blur(4px); }
+  to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+
+/* Symmetric exit — content.ts's dismissRootAnimated adds .ce-dismissing to
+   #ce-root for EXIT_ANIM_MS (200ms, kept in sync with this duration) before
+   tearing the card down, so dismissal fades out instead of vanishing instantly. */
+#ce-root.ce-dismissing .ce-card {
+  animation: ce-card-out 0.2s ease forwards;
+}
+@keyframes ce-card-out {
+  from { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+  to   { opacity: 0; transform: translateY(10px) scale(0.98); filter: blur(4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #ce-root .ce-card { animation: none; }
+  #ce-root.ce-dismissing .ce-card { animation: none; }
+}
+
+/* Deep-dive completion banner (all stages answered correctly). */
+#ce-root .ce-celebrate {
+  pointer-events: auto;
+  width: 340px;
+  max-width: 85vw;
+  box-sizing: border-box;
+  text-align: center;
+  font-weight: 700;
+  padding: 12px 16px;
+  border-radius: 12px;
+  color: var(--ce-text, #111111);
+  background: var(--ce-background, #ffffff);
+  border: 2px solid var(--ce-accent, #ffd54a);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  animation: ce-celebrate-pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+@keyframes ce-celebrate-pop {
+  0% { opacity: 0; transform: scale(0.8); }
+  60% { transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #ce-root .ce-celebrate { animation: none; }
+}
+
+/* No-pack indicator — brief toast shown when no pack exists for this video. */
+#ce-root .ce-no-pack {
+  pointer-events: auto;
+  background: var(--ce-background, #ffffff);
+  color: var(--ce-text, #111111);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(127, 127, 127, 0.2);
+  animation: ce-fade-in-out 3.5s ease forwards;
+}
+@keyframes ce-fade-in-out {
+  0% { opacity: 0; transform: translateY(8px); }
+  12% { opacity: 1; transform: translateY(0); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #ce-root .ce-no-pack { animation: none; opacity: 0; }
+}
+
+.ce-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.ce-title {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--ce-display);
+  font-weight: 700;
+  font-size: 11.5px;
+  color: var(--ce-type, var(--ce-primary, #2962ff));
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+/* Eyebrow glyph chip — a small type-tinted badge carrying a per-primitive icon,
+   so even at a glance the card type is legible without reading the label. */
+.ce-title::before {
+  content: "";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1;
+  flex: none;
+  color: var(--ce-type, var(--ce-primary, #2962ff));
+  background: color-mix(in srgb, var(--ce-type) 14%, transparent);
+}
+#ce-root .ce-card[data-primitive="single_choice"] .ce-title::before { content: "?"; font-weight: 800; }
+#ce-root .ce-card[data-primitive="scale"] .ce-title::before { content: "▦"; }
+#ce-root .ce-card[data-primitive="notice"] .ce-title::before { content: "i"; font-style: italic; font-weight: 800; font-family: Georgia, serif; }
+#ce-root .ce-card[data-primitive="action"] .ce-title::before { content: "★"; }
+#ce-root .ce-card[data-primitive="up_next"] .ce-title::before { content: "»"; font-weight: 800; }
+
+.ce-dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--ce-text, #111111);
+  opacity: 0.55;
+  padding: 2px 6px;
+}
+.ce-dismiss:hover { opacity: 1; }
+
+/* Snooze: a header button with a small popover (rest of video / for today). */
+.ce-snooze { position: relative; display: inline-flex; }
+.ce-snooze-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ce-text, #111111);
+  opacity: 0.55;
+  padding: 2px 6px;
+}
+.ce-snooze-toggle:hover { opacity: 1; }
+.ce-snooze-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 1;
+  display: none;
+  flex-direction: column;
+  min-width: 150px;
+  margin-top: 4px;
+  background: var(--ce-background, #ffffff);
+  border: 1px solid rgba(127, 127, 127, 0.3);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+.ce-snooze-menu[data-open="true"] { display: flex; }
+.ce-snooze-opt {
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--ce-text, #111111);
+}
+.ce-snooze-opt:hover { background: var(--ce-type, var(--ce-primary, #2962ff)); color: var(--ce-background, #ffffff); }
+
+/* Optional leading image (item.image_url) — any primitive, generalizes the
+   action primitive's cta.image_url so notice/up_next/scale can carry one too. */
+.ce-card-image {
+  display: block;
+  width: 100%;
+  max-height: 168px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+/* Optional secondary caption (item.caption) — a headline+caption structure for
+   plain-text primitives, same visual weight as the up_next kicker heading. */
+.ce-caption {
+  margin-bottom: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ce-type, var(--ce-primary, #2962ff));
+}
+
+.ce-body {
+  margin-bottom: 12px;
+  font-size: 14.5px;
+  font-weight: 450;
+  letter-spacing: 0.002em;
+  color: color-mix(in srgb, var(--ce-text, #111111) 92%, transparent);
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+/* up_next: passive "what's coming" card — small kicker above the body. */
+.ce-upnext-heading {
+  margin-bottom: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ce-type, var(--ce-primary, #2962ff));
+}
+
+.ce-actions,
+.ce-scale {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ce-choice-wrap { display: flex; gap: 4px; width: 100%; }
+
+.ce-btn {
+  cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--ce-type, #2962ff) 32%, transparent);
+  background: color-mix(in srgb, var(--ce-type, #2962ff) 6%, var(--ce-background, #ffffff));
+  color: color-mix(in srgb, var(--ce-type, #2962ff) 88%, var(--ce-text, #111));
+  border-radius: 10px;
+  padding: 9px 13px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.05s;
+}
+.ce-btn:hover {
+  background: var(--ce-type, #2962ff);
+  border-color: var(--ce-type, #2962ff);
+  color: var(--ce-background, #ffffff);
+}
+.ce-btn:active { transform: translateY(1px); }
+.ce-btn:focus-visible {
+  outline: 2px solid var(--ce-accent, #ffd54a);
+  outline-offset: 2px;
+}
+
+.ce-btn-choice { flex: 1; text-align: left; transition: background 0.15s, border-color 0.15s, opacity 0.15s; }
+.ce-btn-scale { min-width: 38px; text-align: center; }
+
+/* Answer feedback — set by the renderers, held briefly by the overlay. */
+.ce-btn:disabled { cursor: default; opacity: 0.55; }
+.ce-btn.ce-chosen { opacity: 1; }
+.ce-btn.ce-chosen:not(.ce-right):not(.ce-wrong) {
+  background: var(--ce-type, var(--ce-primary, #2962ff));
+  color: var(--ce-background, #ffffff);
+  /* Same visual weight as the action primitive's CTA button — a chosen scale
+     point (or single_choice answer) reads with equal confidence/emphasis. */
+  font-weight: 700;
+  box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--ce-type, #2962ff) 70%, transparent);
+}
+.ce-btn.ce-right {
+  background: var(--ce-ok, #1e8e3e);
+  border-color: var(--ce-ok, #1e8e3e);
+  color: #ffffff;
+  opacity: 1;
+}
+.ce-btn.ce-wrong {
+  background: var(--ce-danger, #d93025);
+  border-color: var(--ce-danger, #d93025);
+  color: #ffffff;
+  opacity: 1;
+}
+/* Like/dislike footer — a quiet quality signal, separated from the answer row. */
+.ce-feedback {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(127, 127, 127, 0.18);
+}
+.ce-fb-btn {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-size: 15px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 6px;
+  opacity: 0.55;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.ce-fb-btn:hover { opacity: 1; }
+.ce-fb-btn:active { transform: scale(0.9); }
+.ce-fb-btn:disabled { cursor: default; }
+.ce-fb-btn.ce-fb-chosen { opacity: 1; transform: scale(1.1); }
+.ce-feedback[data-done="true"] .ce-fb-btn:not(.ce-fb-chosen) { opacity: 0.25; }
+
+.ce-btn-ack,
+.ce-btn-replay {
+  background: var(--ce-type, var(--ce-primary, #2962ff));
+  color: var(--ce-background, #ffffff);
+  border-color: transparent;
+}
+.ce-btn-ack:hover,
+.ce-btn-replay:hover { background: color-mix(in srgb, var(--ce-type, #2962ff) 85%, #000); }
+
+/* up_next "Jump ahead" + intro Subscribe: same solid accent as replay. Fullscreen
+   is a lighter secondary. Subscribe is an <a> styled as a button. */
+.ce-btn-upnext-jump,
+.ce-btn-subscribe {
+  background: var(--ce-type, var(--ce-primary, #2962ff));
+  color: var(--ce-background, #ffffff);
+  border-color: transparent;
+  text-decoration: none;
+}
+.ce-btn-upnext-jump:hover,
+.ce-btn-subscribe:hover { background: color-mix(in srgb, var(--ce-type, #2962ff) 85%, #000); }
+.ce-btn-fullscreen { border-color: transparent; }
+
+.ce-btn-link {
+  border-color: transparent;
+  font-weight: 400;
+}
+
+.ce-scale-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 4px;
+}
+
+/* ── action (commerciable prompt) — image, price, disclosure, CTA button ────── */
+.ce-cta-image {
+  display: block;
+  width: 100%;
+  max-height: 168px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+.ce-cta-price {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.ce-cta-disclosure {
+  font-size: 11px;
+  opacity: 0.6;
+  margin-bottom: 8px;
+}
+.ce-btn-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  background: var(--ce-type, var(--ce-primary, #2962ff));
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--ce-type, #2962ff) 70%, transparent);
+}
+.ce-btn-cta:hover { background: color-mix(in srgb, var(--ce-type, #2962ff) 85%, #000); color: #fff; }
+
+
+/* ── Named position zones (set as #ce-root[data-position]; default = bottom-right
+      when unset, per the base #ce-root rule above) ──────────────────────────── */
+/* top/bottom zones stay bound on BOTH edges (see #ce-root) so a multi-stage
+   thread scrolls inside a fixed box instead of growing past the viewport. */
+#ce-root[data-position^="top"]    { top: 64px; bottom: 16px; }
+#ce-root[data-position^="middle"] { top: 50%; bottom: auto; transform: translateY(-50%); }
+#ce-root[data-position^="bottom"] { bottom: 64px; top: 16px; }
+#ce-root[data-position$="left"]   { left: 16px; right: auto; }
+#ce-root[data-position$="right"]  { right: 16px; left: auto; }
+#ce-root[data-position$="center"] { left: 50%; right: auto; transform: translateX(-50%); }
+/* dead-center needs both axes (defined last so it wins over the suffix rules) */
+#ce-root[data-position="center"] { left: 50%; top: 50%; right: auto; bottom: auto; transform: translate(-50%, -50%); }
+#ce-root[data-position$="left"] .ce-thread   { align-items: flex-start; }
+#ce-root[data-position$="center"] .ce-thread { align-items: center; }
+
+/* ── Lower-third promo — PROMO cards (action primitive) only ───────────────────
+   A native-feeling sponsor banner docked across the bottom of the player. It
+   never dims, blurs, or pauses the video — the viewer stays in full control. The
+   host spans the bottom; the card flattens its header/content wrappers (via
+   display:contents) into one horizontal row: [thumb] [eyebrow] [body] [price]
+   [CTA] [✕]. Regular prompts never use this. */
+#ce-root[data-promo="true"] {
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  top: auto;
+  transform: none;
+}
+#ce-root[data-promo="true"] .ce-thread {
+  align-items: stretch;
+  max-height: none;
+  width: 100%;
+}
+#ce-root[data-promo="true"] .ce-card {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 13px;
+  padding: 10px 14px;
+  animation: ce-promo-in 0.3s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+/* Flatten the shell wrappers so their children become flex items of the row. */
+#ce-root[data-promo="true"] .ce-card .ce-header,
+#ce-root[data-promo="true"] .ce-card .ce-content { display: contents; }
+/* Order the flattened children left→right. */
+#ce-root[data-promo="true"] .ce-card .ce-cta-image {
+  order: 1; width: 50px; height: 50px; max-height: 50px; margin: 0; border-radius: 10px; flex: none;
+}
+#ce-root[data-promo="true"] .ce-card .ce-title {
+  order: 2; flex: none; margin: 0; white-space: nowrap;
+}
+#ce-root[data-promo="true"] .ce-card .ce-body {
+  order: 3; flex: 1 1 auto; min-width: 0; margin: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#ce-root[data-promo="true"] .ce-card .ce-cta-disclosure {
+  order: 4; flex: none; margin: 0; font-size: 10.5px;
+}
+#ce-root[data-promo="true"] .ce-card .ce-cta-price {
+  order: 5; flex: none; margin: 0; font-size: 15px;
+}
+#ce-root[data-promo="true"] .ce-card .ce-btn-cta {
+  order: 6; width: auto; flex: none; padding: 9px 16px;
+}
+#ce-root[data-promo="true"] .ce-card .ce-dismiss {
+  order: 7; flex: none; align-self: flex-start;
+}
+/* The quality footer would break the single-row banner — hide it on promos. */
+#ce-root[data-promo="true"] .ce-card .ce-feedback { display: none; }
+@keyframes ce-promo-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #ce-root[data-promo="true"] .ce-card { animation: none; }
+}
+
+/* ── New-video notification toast ───────────────────────────────────────────
+   Silent, auto-dismissing. Fixed to the viewport top-RIGHT — directly below the
+   browser's extension icon, and clear of the prompt overlay (bottom-right).
+   Theming via the same --ce-* tokens; quieter than a prompt card by design. */
+#ce-notify {
+  position: fixed;
+  right: 16px;
+  top: 16px;
+  z-index: 10001;
+  font-family: "Roboto", "Segoe UI", system-ui, sans-serif;
+  pointer-events: none;
+}
+#ce-notify .ce-notify-card {
+  position: relative;
+  pointer-events: auto;
+  width: 300px;
+  max-width: 80vw;
+  box-sizing: border-box;
+  background: var(--ce-background, #ffffff);
+  color: var(--ce-text, #111111);
+  border-radius: 12px;
+  border: 1px solid rgba(127, 127, 127, 0.2);
+  border-left: 3px solid var(--ce-accent, var(--ce-primary, #2962ff));
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.22);
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.45;
+  animation: ce-notify-in 0.32s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+@keyframes ce-notify-in {
+  from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #ce-notify .ce-notify-card { animation: none; }
+}
+.ce-notify-eyebrow {
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ce-primary, #2962ff);
+  margin-bottom: 4px;
+  padding-right: 18px; /* clear the close button */
+}
+.ce-notify-title {
+  font-weight: 600;
+  margin-bottom: 10px;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ce-notify-sub {
+  font-size: 12px;
+  opacity: 0.72;
+  margin: -6px 0 10px;
+}
+.ce-notify-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ce-notify-watch { padding: 7px 14px; width: auto; }
+.ce-notify-secondary { padding: 7px 8px; }
+.ce-notify-mute { padding: 7px 6px; opacity: 0.7; margin-left: auto; }
+.ce-notify-mute:hover { opacity: 1; }
+.ce-notify-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--ce-text, #111111);
+  opacity: 0.5;
+  padding: 2px 4px;
+}
+.ce-notify-close:hover { opacity: 1; }
+
+/* ── Long-text fit ────────────────────────────────────────────────────────────
+   Prompts past ~140/~240 chars step the type down (data-len set by the L1
+   renderer) so the whole text stays visible inside the card at every
+   card_style — appended last so it outranks the per-style .ce-body sizes. */
+#ce-root .ce-card .ce-body[data-len="long"] { font-size: 13px; line-height: 1.45; }
+#ce-root .ce-card .ce-body[data-len="xlong"] { font-size: 12px; line-height: 1.4; }
+
+/* ─── Study-material header actions (📋 copy / 📝 save-to-notebook) ─────────── */
+.ce-hdr-action {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ce-text, #111111);
+  opacity: 0.55;
+  padding: 2px 6px;
+  line-height: 1;
+}
+.ce-hdr-action:hover { opacity: 1; }
+.ce-hdr-action[data-done="true"] { opacity: 0.9; cursor: default; }
+
+/* ─── Notebook (viewer study journal) ──────────────────────────────────────── */
+@keyframes pulse-launcher {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.8; }
+}
+
+.ce-notebook-launcher {
+  position: absolute;
+  z-index: 2147482999;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 40px;
+  text-align: center;
+  background: rgba(var(--ce-accent-rgb, 255, 213, 74), 0.35);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+.ce-notebook-launcher:hover {
+  transform: scale(1.1);
+  background: rgba(var(--ce-accent-rgb, 255, 213, 74), 0.35);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.ce-notebook-launcher.pulse { animation: pulse-launcher 1.2s ease-out; }
+
+.ce-notebook {
+  position: fixed;
+  z-index: 2147483000;
+  width: 320px;
+  max-width: calc(100vw - 36px);
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(var(--ce-background-rgb, 255, 255, 255), 0.05);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  font-family: ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif;
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+}
+.ce-nb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.ce-nb-title { font-weight: 700; font-size: 13px; flex: 1; letter-spacing: 0.3px; }
+.ce-nb-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 1.5;
+  font-family: inherit;
+  resize: none;
+  min-height: 50px;
+  max-height: 120px;
+  box-sizing: border-box;
+}
+.ce-nb-input::placeholder { color: rgba(255, 255, 255, 0.6); }
+.ce-nb-input:focus {
+  outline: none;
+  border-color: rgba(var(--ce-primary-rgb, 41, 98, 255), 0.8);
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 2px rgba(var(--ce-primary-rgb, 41, 98, 255), 0.2);
+}
+.ce-nb-list { overflow-y: auto; padding: 6px 0; max-height: 30vh; }
+.ce-nb-empty { padding: 18px 14px; font-size: 12px; opacity: 0.7; line-height: 1.5; text-align: center; }
+.ce-nb-note {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+}
+.ce-nb-note:last-child { border-bottom: none; }
+.ce-nb-meta { font-size: 11px; opacity: 0.6; margin-bottom: 3px; }
+.ce-nb-jump {
+  cursor: pointer;
+  color: #64b5f6;
+  opacity: 0.9;
+  text-decoration: none;
+}
+.ce-nb-jump:hover { text-decoration: underline; }
+.ce-nb-body { font-size: 12px; line-height: 1.4; white-space: pre-wrap; opacity: 0.85; }
+.ce-nb-answer {
+  font-size: 11px;
+  margin-top: 4px;
+  color: #81c784;
+}
+.ce-nb-actions { display: flex; gap: 8px; margin-top: 6px; align-items: center; font-size: 11px; }
+.ce-nb-actions .ce-btn-link { padding: 2px 0; opacity: 0.7; color: #64b5f6; }
+.ce-nb-actions .ce-btn-link:hover { opacity: 1; }
+.ce-nb-footer {
+  padding: 10px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+.ce-nb-footer button {
+  font-size: 11px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+.ce-nb-footer button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
