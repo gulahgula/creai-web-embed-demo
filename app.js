@@ -35,6 +35,7 @@ var CLIENT_CONFIG_DEFAULTS = {
     review_mode: false
   }
 };
+var MAX_FOLLOWUP_DEPTH = 3;
 
 // ../../platform/kernel/dist/validation/compiled.js
 function __ucs2length(str2) {
@@ -2467,6 +2468,23 @@ var DROPOFF_DEFAULTS = {
   dropThreshold: 0.15
 };
 
+// ../../platform/kernel/dist/followups/index.js
+function answerOutcome(prompt, optionId) {
+  if (prompt.correct_option_id === void 0 || optionId === void 0)
+    return "neutral";
+  return optionId === prompt.correct_option_id ? "correct" : "wrong";
+}
+function pickFollowup(prompt, outcome, depth) {
+  if (depth >= MAX_FOLLOWUP_DEPTH)
+    return null;
+  if (outcome !== "correct" && outcome !== "wrong")
+    return null;
+  return prompt.followups?.find((f) => f.on === outcome)?.prompt ?? null;
+}
+function isDeepDiveComplete(prompt, outcome, depth) {
+  return outcome === "correct" && pickFollowup(prompt, "correct", depth) === null;
+}
+
 // ../../platform/primitives/dist/shared.js
 var STRING_DEFAULTS = {
   overlay_title: "Reflect",
@@ -2992,21 +3010,53 @@ function clearOverlay() {
   delete host.dataset["style"];
   delete host.dataset["promo"];
 }
-function showItem(item) {
-  const style = normalizeCardStyle(item.card_style);
+function asRenderable(prompt) {
+  return {
+    item_id: prompt.item_id,
+    template_id: "",
+    primitive: prompt.primitive,
+    anchor: { mode: "immediate" },
+    body: prompt.body,
+    tags: prompt.tags ?? [],
+    ...prompt.options !== void 0 ? { options: prompt.options } : {},
+    ...prompt.correct_option_id !== void 0 ? { correct_option_id: prompt.correct_option_id } : {},
+    ...prompt.scale !== void 0 ? { scale: prompt.scale } : {},
+    ...prompt.cta !== void 0 ? { cta: prompt.cta } : {},
+    ...prompt.followups !== void 0 ? { followups: prompt.followups } : {}
+  };
+}
+function showDeepDiveComplete(thread) {
+  const banner = document.createElement("div");
+  banner.className = "ce-celebrate";
+  banner.textContent = "Nailed every step \u2014 nice deep dive! \u{1F389}";
+  thread.appendChild(banner);
+  banner.scrollIntoView({ block: "nearest" });
+}
+function renderStage(thread, item, depth, allCorrect, style) {
   const element = renderItem(
     item,
     {
       onAnswer: (payload) => {
         cancelNudgeTimer();
+        const outcome = answerOutcome(item, payload.option_id);
+        const next = pickFollowup(item, outcome, depth);
+        const stillAllCorrect = allCorrect && outcome === "correct";
         const holdMs = item.correct_option_id !== void 0 ? 1200 : 350;
-        window.setTimeout(() => clearOverlay(), holdMs);
+        window.setTimeout(() => {
+          if ($("ce-root").childElementCount === 0) return;
+          if (next) {
+            renderStage(thread, asRenderable(next), depth + 1, stillAllCorrect, style);
+          } else if (depth >= 1 && stillAllCorrect && isDeepDiveComplete(item, outcome, depth)) {
+            showDeepDiveComplete(thread);
+            window.setTimeout(() => clearOverlay(), 2600);
+          } else {
+            clearOverlay();
+          }
+        }, holdMs);
       },
       onDismiss: () => clearOverlay(),
-      // Attribution hooks only. The primitives render a real <a target="_blank">
-      // that performs the navigation itself, so these must NOT also open the URL
-      // (that would double-open). A fuller build emits link_click / cta_clicked
-      // telemetry here.
+      // Attribution hooks only — the rendered <a target="_blank"> navigates
+      // itself, so these must NOT also open the URL (that double-opens).
       onLinkClick: () => {
       },
       onCtaClick: () => {
@@ -3022,15 +3072,20 @@ function showItem(item) {
     style
   );
   if (!element) return;
+  thread.appendChild(element);
+  element.scrollIntoView({ block: "nearest" });
+}
+function showItem(item) {
+  const style = normalizeCardStyle(item.card_style);
   const host = $("ce-root");
   host.dataset["style"] = style;
   if (item.primitive === "action") host.dataset["promo"] = "true";
   else delete host.dataset["promo"];
   const thread = document.createElement("div");
   thread.className = "ce-thread";
-  thread.appendChild(element);
   host.replaceChildren(thread);
   markShown(session, item.item_id);
+  renderStage(thread, item, 0, true, style);
   cancelNudgeTimer();
   const dismissMs = nudgeDismissMs(item, style);
   if (dismissMs !== void 0) {
