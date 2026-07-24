@@ -48,6 +48,28 @@
     #clock { font-variant-numeric: tabular-nums; color: #93a2c2; margin-left: auto; font-size: 13px; }
     .hint { margin-top: 12px; color: #6f80a3; font-size: 12.5px; line-height: 1.5; }
     .hint code { background: #16223d; padding: 1px 5px; border-radius: 4px; color: #b9c6e2; }
+    #picker-form {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      margin-bottom: 16px; padding: 12px; border-radius: 10px;
+      background: #0e1730; border: 1px solid #1c2740;
+    }
+    #picker-form input {
+      padding: 7px 10px; border-radius: 8px; border: 1px solid #2a3a5e;
+      background: #16223d; color: #e6ebf5; font-size: 13px;
+    }
+    #picker-video { flex: 1; min-width: 200px; }
+    #picker-form button {
+      padding: 7px 14px; border-radius: 8px; border: 1px solid #2a3a5e;
+      background: #1f3a63; color: #e6ebf5; cursor: pointer; font-size: 13px;
+    }
+    #picker-form button:hover { background: #274a7a; }
+    #picker-status { width: 100%; font-size: 12.5px; color: #e0a83e; min-height: 1em; }
+    #catalog-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+    .catalog-entry {
+      padding: 5px 10px; border-radius: 999px; border: 1px solid #2a3a5e;
+      background: #16223d; color: #b9c6e2; cursor: pointer; font-size: 12px;
+    }
+    .catalog-entry:hover { background: #1d2c4d; color: #e6ebf5; }
   </style>
 </head>
 <body>
@@ -56,6 +78,14 @@
     <span class="badge">Demo · no extension</span>
   </div>
   <main>
+    <form id="picker-form">
+      <input id="picker-client" type="text" placeholder="creator id" autocomplete="off" />
+      <input id="picker-video" type="text" placeholder="YouTube URL or video id" autocomplete="off" />
+      <button type="submit">Load</button>
+      <div id="picker-status"></div>
+    </form>
+    <div id="catalog-list"></div>
+
     <h1 id="video-title">Loading…</h1>
     <div id="channel-line" hidden></div>
 
@@ -75,6 +105,6 @@
     <p class="hint">Reflect without extension</p>
   </main>
 
-  <script type="module" src="./app.js?v=367e2141"></script>
+  <script type="module" src="./app.js?v=ea485a71"></script>
 </body>
 </html>

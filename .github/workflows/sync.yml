@@ -1,4 +1,4 @@
-name: Sync pack
+name: Sync packs
 on:
   schedule:
     - cron: '*/10 * * * *'
@@ -6,22 +6,22 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: sync-pack
+  group: sync-packs
   cancel-in-progress: true
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: curl -sS --fail --retry 4 --retry-delay 10 -m 120 "${{ vars.PACK_SOURCE_URL }}" -o pack.raw.json
-      - run: node sanitize-pack.mjs pack.raw.json > pack.new.json
+      - env:
+          PACK_SOURCE_BASE: ${{ vars.PACK_SOURCE_BASE }}
+        run: node sync-packs.mjs
       - run: |
-          if ! diff -q pack.json pack.new.json > /dev/null 2>&1; then
-            mv pack.new.json pack.json
+          if ! git diff --quiet -- packs catalog.json pack.json 2>/dev/null; then
             git config user.name "pack-sync[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add pack.json
-            git commit -m "sync pack"
+            git add packs catalog.json
+            git add -A -- pack.json
+            git commit -m "sync packs"
             git push
           fi
-          rm -f pack.raw.json pack.new.json
