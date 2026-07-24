@@ -3090,7 +3090,7 @@ async function boot() {
     const chEl = document.getElementById("channel-name");
     if (chEl) chEl.textContent = brand.channel_name;
   }
-  const packResult = validatePackEnvelope(await fetch("./pack.json").then((r) => r.json()));
+  const packResult = validatePackEnvelope(await fetch("./pack.json", { cache: "no-store" }).then((r) => r.json()));
   if (!packResult.valid) {
     console.error("pack INVALID:", packResult.errors);
     return;

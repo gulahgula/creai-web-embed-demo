@@ -1,0 +1,30 @@
+name: Sync pack from Creai API
+# Keeps pack.json current with the hosted console. Runs on a schedule (auto)
+# and can be triggered by hand from the Actions tab ("Run workflow" = manual).
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: sync-pack
+  cancel-in-progress: true
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch latest pack
+        run: curl -sS --fail --retry 4 --retry-delay 10 -m 120 "https://creai.onrender.com/v1/creai/pack/K5uzqjelN4k" -o pack.json
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- pack.json; then
+            echo "pack unchanged — nothing to deploy"
+          else
+            git config user.name "pack-sync[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add pack.json
+            git commit -m "chore: sync pack from Creai API"
+            git push
+          fi
