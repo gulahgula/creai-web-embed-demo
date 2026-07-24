@@ -3132,6 +3132,23 @@ function updateClock(now, duration, playing, ended) {
   };
   el.textContent = `${fmt(now)} / ${duration > 0 ? fmt(duration) : "\u2014"} ${ended ? "(ended)" : playing ? "\u25B6" : "\u23F8"}`;
 }
+function buildSeekBar(loadedPack, handle) {
+  const host = document.getElementById("seek-buttons");
+  if (!host) return;
+  host.replaceChildren();
+  const chips = loadedPack.items.map((it) => ({ it, start: it.anchor.mode === "time_window" ? it.anchor.start : void 0 })).filter((x) => typeof x.start === "number").sort((a, b) => a.start - b.start);
+  for (const { it, start } of chips) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    const m = Math.floor(start / 60);
+    const s = Math.floor(start % 60);
+    const branches = (it.followups?.length ?? 0) > 0;
+    btn.textContent = `\u21B7 ${m}:${s.toString().padStart(2, "0")}${branches ? " \u2605" : ""}`;
+    if (branches) btn.title = "Has follow-up prompts";
+    btn.addEventListener("click", () => handle.seekTo(Math.max(0, start - 2)));
+    host.appendChild(btn);
+  }
+}
 async function boot() {
   const brand = await fetch("./brand.json").then((r) => r.json());
   brandStrings = brand.strings;
@@ -3155,12 +3172,7 @@ async function boot() {
   const on = (id, fn) => document.getElementById(id)?.addEventListener("click", fn);
   on("btn-play", () => player?.play());
   on("btn-pause", () => player?.pause());
-  document.querySelectorAll("[data-seek]").forEach((el) => {
-    el.addEventListener("click", () => {
-      const target = Number(el.dataset["seek"]);
-      if (player && Number.isFinite(target)) player.seekTo(target);
-    });
-  });
+  buildSeekBar(pack, player);
   window.setInterval(tick, 250);
 }
 void boot();
