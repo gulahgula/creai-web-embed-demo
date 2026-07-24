@@ -1,16 +1,5 @@
-/* Overlay base styles — platform CSS. Client theming arrives exclusively as
-   the CSS variables in the build-generated :root block (rule 2: config is
-   data; clients never ship CSS).
 
-   Radius note: the overlay uses literal radii (it renders over a video, not on a
-   tokened page surface). The pages dashboard uses --d-r1/--d-r2/--d-r3
-   (10/16/22px); the creator console uses --r-sm/--r-md/--r-lg (6/9/13px). Keep
-   new overlay radii aligned with those scales by eye. */
 
-/* Bundled fonts for the "horror" card_style (self-hosted — no third-party
-   runtime fetch, per CLAUDE.md). Declaring these costs nothing for clients
-   that never use data-style="horror"; the browser only downloads a face when
-   something actually renders text with a matching font-family. */
 @font-face {
   font-family: "Nosifer";
   src: url("assets/fonts/nosifer-latin-400-normal.woff2") format("woff2");
@@ -47,12 +36,6 @@
   font-display: swap;
 }
 
-/* Bounded on BOTH edges (top AND bottom), not just the anchor edge — a deep-dive
-   thread's height is unpredictable (1-N stages), and an unbounded box that only
-   pins its bottom grows upward past the viewport as stages accumulate, clipped
-   invisibly above the page instead of scrolling in view (2026-07-20 bug: dimmed
-   history cards rendered off-screen/overlapping page chrome). Fixing both edges
-   gives the box a real height so .ce-thread's overflow-y:auto can do its job. */
 #ce-root {
   position: absolute;
   right: 16px;
@@ -62,15 +45,9 @@
   font-family: ui-sans-serif, system-ui, "Segoe UI", "Inter", "Roboto", sans-serif;
   pointer-events: none;
 }
-/* Rounded display stack for eyebrows/labels — adds character on platforms that
-   ship a rounded UI face, degrades cleanly to the body stack elsewhere. */
+
 #ce-root .ce-card { --ce-display: ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif; }
 
-/* Choose-your-own-path breadcrumb ("Path: X") — a standing memory aid for
-   which fork the viewer took, distinct from #ce-root's dismissible card
-   thread (content.ts's ensureBreadcrumb()/showBreadcrumb()). Docked top-left:
-   the only corner clear of both the default card position (bottom-right) and
-   the promo lower-third banner (full-bottom). */
 #ce-breadcrumb {
   position: absolute;
   left: 16px;
@@ -95,11 +72,6 @@
   #ce-breadcrumb { animation: none; }
 }
 
-/* Timeline hints — markers on the YouTube progress bar at item timestamps.
-   The layer itself never intercepts events; each dot IS clickable (click to
-   reopen that prompt) and sits just above the scrub line so it doesn't block
-   scrubbing. The dot's centre is at (start / duration) — exactly the trigger
-   point. */
 .ce-hint-layer {
   position: absolute;
   inset: 0;
@@ -108,7 +80,7 @@
 }
 .ce-hint {
   position: absolute;
-  bottom: 7px; /* raised above the thin progress bar so it stays clickable */
+  bottom: 7px; 
   width: 11px;
   height: 11px;
   margin-left: -5.5px;
@@ -124,8 +96,6 @@
   transform: scale(1.45);
 }
 
-/* Thread: stacked stages of a deep-dive/clarification chain. Earlier (answered)
-   cards stay visible above the newest; the column scrolls if it grows tall. */
 #ce-root .ce-thread {
   display: flex;
   flex-direction: column;
@@ -136,25 +106,13 @@
   overflow-y: auto;
   pointer-events: auto;
 }
-/* A short thread (1-2 stages) should still hug the bottom anchor, not float at
-   the box's top — but `justify-content: flex-end` breaks scrolling once the
-   thread overflows (browsers don't register flex-end-justified overflow past
-   the flex-start edge as scrollable, so older stages clip invisibly with no
-   way to reach them). margin-top:auto on the first card gets the same "hug the
-   bottom when short" result WITHOUT that trap: the auto margin absorbs slack
-   space while there's room, and collapses to 0 once content overflows, handing
-   off to ordinary (scrollable) top-anchored flow. */
+
 #ce-root .ce-thread .ce-card:first-child { margin-top: auto; }
-/* top-anchored zone wants the opposite: first stage flush against the top
-   anchor, not pushed down to hug the (unset) bottom. */
+
 #ce-root[data-position^="top"] .ce-thread .ce-card:first-child { margin-top: 0; }
-/* Answered (locked) cards recede so the active one stands out. */
+
 #ce-root .ce-thread .ce-card:not(:last-child) { opacity: 0.62; }
 
-/* Countdown bar — information-only cards (notice/up_next) silently fade after a
-   grace period; this thin bar pinned to the card's bottom edge shrinks 100%→0
-   over that window so the fade is visible, not abrupt. The host sets the
-   transition duration inline (see content.ts nudge-arm block). */
 #ce-root .ce-countdown-bar {
   position: absolute;
   left: 0;
@@ -174,16 +132,14 @@
   width: 300px;
   max-width: 82vw;
   box-sizing: border-box;
-  /* One unified brand accent (the creator-picked --ce-primary) drives every card
-     and the dashboard alike — card TYPES are told apart by their eyebrow glyph,
-     not by color. Correctness colors stay fixed (ok/danger). */
+  
   --ce-type: var(--ce-primary, #2962ff);
   --ce-ok: #1e8e3e;
   --ce-danger: #d93025;
   background: var(--ce-background, #ffffff);
   color: var(--ce-text, #111111);
   border-radius: 14px;
-  /* Theme-aware hairline + a brighter top edge tinted by the type accent. */
+  
   border: 1px solid color-mix(in srgb, var(--ce-text, #111111) 12%, transparent);
   border-top: 2px solid color-mix(in srgb, var(--ce-type) 70%, transparent);
   box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.5), 0 3px 10px -4px rgba(0, 0, 0, 0.28);
@@ -193,17 +149,6 @@
   animation: ce-card-in 0.28s cubic-bezier(0.2, 0.8, 0.3, 1);
 }
 
-/* Per-primitive identity is carried by the eyebrow glyph alone (below) — all card
-   types share the single brand accent so the overlay reads as one coherent
-   palette, matching the dashboard. */
-
-/* ── Interaction archetypes (resolved card_style; unknown → default) ──────────
-   default = Panel (base, above) · compact = Quick card · minimal = Nudge
-   (auto-dismiss, in content.ts) · bold = louder/larger panel. card_style governs
-   SIZE/DENSITY only — the dim+blur spotlight is reserved for promo cards (the
-   action primitive) and never triggered by a style. */
-
-/* compact (Quick card): tighter, smaller — for fast polls / dense videos. */
 #ce-root .ce-card[data-style="compact"] {
   width: 264px;
   padding: 11px 13px;
@@ -212,8 +157,6 @@
 #ce-root .ce-card[data-style="compact"] .ce-body { margin-bottom: 9px; font-size: 13.5px; }
 #ce-root .ce-card[data-style="compact"] .ce-header { margin-bottom: 7px; }
 
-/* minimal (Nudge): a quiet, ambient pill — no title chrome, light elevation. It
-   auto-dismisses if untouched (content.ts), so keep it visually unobtrusive. */
 #ce-root .ce-card[data-style="minimal"] {
   width: 272px;
   padding: 12px 15px;
@@ -222,16 +165,13 @@
 }
 #ce-root .ce-card[data-style="minimal"] .ce-title { display: none; }
 #ce-root .ce-card[data-style="minimal"] .ce-body { margin-bottom: 9px; }
-/* With the title hidden, keep the remaining controls (snooze/dismiss) together
-   at the right edge instead of split apart by space-between. */
+
 #ce-root .ce-card[data-style="minimal"] .ce-header {
   justify-content: flex-end;
   gap: 2px;
   margin-bottom: 6px;
 }
 
-/* bold: a louder, larger panel for a key moment — stays in its corner/zone (no
-   player dim; that's promo-only). */
 #ce-root .ce-card[data-style="bold"] {
   width: 340px;
   padding: 17px 19px;
@@ -240,11 +180,6 @@
 }
 #ce-root .ce-card[data-style="bold"] .ce-body { font-size: 15px; line-height: 1.5; }
 
-/* horror: boxless glow-fade treatment (Claude Design "Horror YouTube popup
-   design", 2026-07-14). Unlike the other variants (size/density only), this
-   one replaces the panel chrome entirely — no background/border/shadow, text
-   glows straight out of the video. A contained (not full-viewport) grain
-   texture keeps a horror-film feel without obscuring the video underneath. */
 #ce-root .ce-card[data-style="horror"] {
   position: relative;
   background: transparent;
@@ -255,7 +190,7 @@
   overflow: hidden;
   animation: ce-horror-fade-in 1.1s ease-out both;
 }
-/* Contained grain — a subtle animated dot-noise texture clipped to the card. */
+
 #ce-root .ce-card[data-style="horror"]::before {
   content: "";
   position: absolute;
@@ -276,8 +211,6 @@
   z-index: 1;
 }
 
-/* Header dot + drip — replaces the default glyph-chip badge with a small
-   pulsing red "witness mark" and a thin drip tail beneath it. */
 #ce-root .ce-card[data-style="horror"] .ce-title {
   position: relative;
   padding-left: 18px;
@@ -335,7 +268,6 @@
   color: #8a7168;
 }
 
-/* Options/scale — boxless: the glow itself IS the selected state, no fill. */
 #ce-root .ce-card[data-style="horror"] .ce-btn {
   background: none;
   border: none;
@@ -397,8 +329,7 @@
   35%  { opacity: 0.9; }
   100% { height: 12px; opacity: 0.9; }
 }
-/* Exit — a fade+blur matching the glow aesthetic, overriding the default
-   translateY/scale ce-card-out for this style only. */
+
 #ce-root.ce-dismissing .ce-card[data-style="horror"] {
   animation: ce-horror-fade-out 0.2s ease forwards;
 }
@@ -416,12 +347,6 @@
   #ce-root.ce-dismissing .ce-card[data-style="horror"] { animation: none; }
 }
 
-/* title_card: cinematic full-bleed chapter-reveal — boxless like horror, but
-   theme-neutral (uses the client's own --ce-type/--ce-primary accent, no
-   fixed palette) rather than a horror-specific look. Meant for a choose-your-
-   own-path arrival/landing beat ("You chose X — this covers Y"), styled like
-   a film chapter title rather than a chip/panel, though assignable to any
-   item like every other card_style. */
 #ce-root .ce-card[data-style="title_card"] {
   position: relative;
   width: 340px;
@@ -487,19 +412,11 @@
   #ce-root.ce-dismissing .ce-card[data-style="title_card"] { animation: none; }
 }
 
-/* Blur dimension borrowed from the horror card_style's fade (2026-07-14
-   audit): a soft focus-pull reads as noticeably more polished than a plain
-   translate+scale, and costs nothing extra to animate. Kept at default's
-   original 0.28s/14px pacing — horror's slower 1.1s/6px timing is tuned to
-   its own atmosphere, not adopted here. */
 @keyframes ce-card-in {
   from { opacity: 0; transform: translateY(14px) scale(0.98); filter: blur(4px); }
   to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
 }
 
-/* Symmetric exit — content.ts's dismissRootAnimated adds .ce-dismissing to
-   #ce-root for EXIT_ANIM_MS (200ms, kept in sync with this duration) before
-   tearing the card down, so dismissal fades out instead of vanishing instantly. */
 #ce-root.ce-dismissing .ce-card {
   animation: ce-card-out 0.2s ease forwards;
 }
@@ -513,7 +430,6 @@
   #ce-root.ce-dismissing .ce-card { animation: none; }
 }
 
-/* Deep-dive completion banner (all stages answered correctly). */
 #ce-root .ce-celebrate {
   pointer-events: auto;
   width: 340px;
@@ -538,7 +454,6 @@
   #ce-root .ce-celebrate { animation: none; }
 }
 
-/* No-pack indicator — brief toast shown when no pack exists for this video. */
 #ce-root .ce-no-pack {
   pointer-events: auto;
   background: var(--ce-background, #ffffff);
@@ -579,8 +494,7 @@
   text-transform: uppercase;
   letter-spacing: 0.07em;
 }
-/* Eyebrow glyph chip — a small type-tinted badge carrying a per-primitive icon,
-   so even at a glance the card type is legible without reading the label. */
+
 .ce-title::before {
   content: "";
   display: inline-flex;
@@ -612,7 +526,6 @@
 }
 .ce-dismiss:hover { opacity: 1; }
 
-/* Snooze: a header button with a small popover (rest of video / for today). */
 .ce-snooze { position: relative; display: inline-flex; }
 .ce-snooze-toggle {
   background: none;
@@ -651,8 +564,6 @@
 }
 .ce-snooze-opt:hover { background: var(--ce-type, var(--ce-primary, #2962ff)); color: var(--ce-background, #ffffff); }
 
-/* Optional leading image (item.image_url) — any primitive, generalizes the
-   action primitive's cta.image_url so notice/up_next/scale can carry one too. */
 .ce-card-image {
   display: block;
   width: 100%;
@@ -662,8 +573,6 @@
   margin-bottom: 10px;
 }
 
-/* Optional secondary caption (item.caption) — a headline+caption structure for
-   plain-text primitives, same visual weight as the up_next kicker heading. */
 .ce-caption {
   margin-bottom: 4px;
   font-size: 11.5px;
@@ -683,7 +592,6 @@
   word-wrap: break-word;
 }
 
-/* up_next: passive "what's coming" card — small kicker above the body. */
 .ce-upnext-heading {
   margin-bottom: 4px;
   font-size: 11.5px;
@@ -729,14 +637,12 @@
 .ce-btn-choice { flex: 1; text-align: left; transition: background 0.15s, border-color 0.15s, opacity 0.15s; }
 .ce-btn-scale { min-width: 38px; text-align: center; }
 
-/* Answer feedback — set by the renderers, held briefly by the overlay. */
 .ce-btn:disabled { cursor: default; opacity: 0.55; }
 .ce-btn.ce-chosen { opacity: 1; }
 .ce-btn.ce-chosen:not(.ce-right):not(.ce-wrong) {
   background: var(--ce-type, var(--ce-primary, #2962ff));
   color: var(--ce-background, #ffffff);
-  /* Same visual weight as the action primitive's CTA button — a chosen scale
-     point (or single_choice answer) reads with equal confidence/emphasis. */
+  
   font-weight: 700;
   box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--ce-type, #2962ff) 70%, transparent);
 }
@@ -752,7 +658,7 @@
   color: #ffffff;
   opacity: 1;
 }
-/* Like/dislike footer — a quiet quality signal, separated from the answer row. */
+
 .ce-feedback {
   display: flex;
   justify-content: flex-end;
@@ -787,8 +693,6 @@
 .ce-btn-ack:hover,
 .ce-btn-replay:hover { background: color-mix(in srgb, var(--ce-type, #2962ff) 85%, #000); }
 
-/* up_next "Jump ahead" + intro Subscribe: same solid accent as replay. Fullscreen
-   is a lighter secondary. Subscribe is an <a> styled as a button. */
 .ce-btn-upnext-jump,
 .ce-btn-subscribe {
   background: var(--ce-type, var(--ce-primary, #2962ff));
@@ -813,7 +717,6 @@
   margin-top: 4px;
 }
 
-/* ── action (commerciable prompt) — image, price, disclosure, CTA button ────── */
 .ce-cta-image {
   display: block;
   width: 100%;
@@ -848,28 +751,17 @@
 }
 .ce-btn-cta:hover { background: color-mix(in srgb, var(--ce-type, #2962ff) 85%, #000); color: #fff; }
 
-
-/* ── Named position zones (set as #ce-root[data-position]; default = bottom-right
-      when unset, per the base #ce-root rule above) ──────────────────────────── */
-/* top/bottom zones stay bound on BOTH edges (see #ce-root) so a multi-stage
-   thread scrolls inside a fixed box instead of growing past the viewport. */
 #ce-root[data-position^="top"]    { top: 64px; bottom: 16px; }
 #ce-root[data-position^="middle"] { top: 50%; bottom: auto; transform: translateY(-50%); }
 #ce-root[data-position^="bottom"] { bottom: 64px; top: 16px; }
 #ce-root[data-position$="left"]   { left: 16px; right: auto; }
 #ce-root[data-position$="right"]  { right: 16px; left: auto; }
 #ce-root[data-position$="center"] { left: 50%; right: auto; transform: translateX(-50%); }
-/* dead-center needs both axes (defined last so it wins over the suffix rules) */
+
 #ce-root[data-position="center"] { left: 50%; top: 50%; right: auto; bottom: auto; transform: translate(-50%, -50%); }
 #ce-root[data-position$="left"] .ce-thread   { align-items: flex-start; }
 #ce-root[data-position$="center"] .ce-thread { align-items: center; }
 
-/* ── Lower-third promo — PROMO cards (action primitive) only ───────────────────
-   A native-feeling sponsor banner docked across the bottom of the player. It
-   never dims, blurs, or pauses the video — the viewer stays in full control. The
-   host spans the bottom; the card flattens its header/content wrappers (via
-   display:contents) into one horizontal row: [thumb] [eyebrow] [body] [price]
-   [CTA] [✕]. Regular prompts never use this. */
 #ce-root[data-promo="true"] {
   left: 12px;
   right: 12px;
@@ -892,10 +784,10 @@
   padding: 10px 14px;
   animation: ce-promo-in 0.3s cubic-bezier(0.2, 0.8, 0.3, 1);
 }
-/* Flatten the shell wrappers so their children become flex items of the row. */
+
 #ce-root[data-promo="true"] .ce-card .ce-header,
 #ce-root[data-promo="true"] .ce-card .ce-content { display: contents; }
-/* Order the flattened children left→right. */
+
 #ce-root[data-promo="true"] .ce-card .ce-cta-image {
   order: 1; width: 50px; height: 50px; max-height: 50px; margin: 0; border-radius: 10px; flex: none;
 }
@@ -918,7 +810,7 @@
 #ce-root[data-promo="true"] .ce-card .ce-dismiss {
   order: 7; flex: none; align-self: flex-start;
 }
-/* The quality footer would break the single-row banner — hide it on promos. */
+
 #ce-root[data-promo="true"] .ce-card .ce-feedback { display: none; }
 @keyframes ce-promo-in {
   from { opacity: 0; transform: translateY(16px); }
@@ -928,10 +820,6 @@
   #ce-root[data-promo="true"] .ce-card { animation: none; }
 }
 
-/* ── New-video notification toast ───────────────────────────────────────────
-   Silent, auto-dismissing. Fixed to the viewport top-RIGHT — directly below the
-   browser's extension icon, and clear of the prompt overlay (bottom-right).
-   Theming via the same --ce-* tokens; quieter than a prompt card by design. */
 #ce-notify {
   position: fixed;
   right: 16px;
@@ -971,7 +859,7 @@
   letter-spacing: 0.06em;
   color: var(--ce-primary, #2962ff);
   margin-bottom: 4px;
-  padding-right: 18px; /* clear the close button */
+  padding-right: 18px; 
 }
 .ce-notify-title {
   font-weight: 600;
@@ -1012,14 +900,9 @@
 }
 .ce-notify-close:hover { opacity: 1; }
 
-/* ── Long-text fit ────────────────────────────────────────────────────────────
-   Prompts past ~140/~240 chars step the type down (data-len set by the L1
-   renderer) so the whole text stays visible inside the card at every
-   card_style — appended last so it outranks the per-style .ce-body sizes. */
 #ce-root .ce-card .ce-body[data-len="long"] { font-size: 13px; line-height: 1.45; }
 #ce-root .ce-card .ce-body[data-len="xlong"] { font-size: 12px; line-height: 1.4; }
 
-/* ─── Study-material header actions (📋 copy / 📝 save-to-notebook) ─────────── */
 .ce-hdr-action {
   background: none;
   border: none;
@@ -1033,7 +916,6 @@
 .ce-hdr-action:hover { opacity: 1; }
 .ce-hdr-action[data-done="true"] { opacity: 0.9; cursor: default; }
 
-/* ─── Notebook (viewer study journal) ──────────────────────────────────────── */
 @keyframes pulse-launcher {
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.15); opacity: 0.8; }

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Watch — demo (no extension)</title>
-  <!-- The REAL platform overlay stylesheet, copied verbatim at build time. -->
+  
   <link rel="stylesheet" href="./overlay.css" />
   <style>
     :root { color-scheme: dark; }
@@ -29,8 +29,7 @@
     main { max-width: 960px; margin: 0 auto; padding: 22px 20px 60px; }
     #video-title { font-size: 22px; font-weight: 700; margin: 4px 0 2px; line-height: 1.25; }
     #channel-name { color: #93a2c2; font-size: 14px; margin-bottom: 16px; }
-    /* The player stage: a positioned 16/9 box. #ce-root (from overlay.css) fills
-       it as an absolute overlay; the YouTube iframe sits behind it. */
+    
     #player-stage {
       position: relative; aspect-ratio: 16 / 9; width: 100%;
       background: #000; border-radius: 14px; overflow: hidden;
@@ -62,7 +61,7 @@
 
     <div id="player-stage">
       <div id="player"></div>
-      <!-- Overlay host: positioned by overlay.css; cards render here. -->
+      
       <div id="ce-root"></div>
     </div>
 
